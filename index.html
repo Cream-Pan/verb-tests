@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f7fb">
+  <meta name="description" content="言語流暢性課題と動詞生成課題の実験ランナー．4 つの構成から選択し，順序を設定して自動進行．イベント CSV に課題開始時刻を記録します．">
+  <title>言語課題ランナー</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%235c54c8'/%3E%3Cpath d='M17 19h30M17 32h21M17 45h14' stroke='white' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="protocol.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="icon-up" viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></symbol>
+    <symbol id="icon-down" viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"/></symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+    <symbol id="icon-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></symbol>
+  </defs></svg>
+
+  <div id="home-page">
+    <header class="site-header"><div class="header-inner">
+      <a class="brand" href="./" aria-label="言語課題ランナー ホーム"><span class="brand-mark"><i></i><i></i><i></i></span><span>言語課題ランナー<small>LANGUAGE TASK RUNNER</small></span></a>
+      <div class="header-right"><span class="local-badge"><span></span>ブラウザ内で記録</span><button id="protocol-open" class="text-button"><svg><use href="#icon-info"/></svg>使い方・記録仕様</button></div>
+    </div></header>
+
+    <main class="workspace">
+      <div class="page-heading"><div><div class="eyebrow">SESSION SETUP</div><h1>実施する課題を設定</h1><p>課題を選び，順番を決めたら，あとは自動で進みます．</p></div><span class="version-label">PROTOCOL COLLECTION <b>01—04</b></span></div>
+
+      <div class="setup-grid">
+        <section class="selection-panel" aria-labelledby="selection-heading">
+          <div class="panel-heading"><div><h2 id="selection-heading">課題と実行順序</h2><p>チェックで実行を切り替え，矢印で順番を変更します．</p></div><button id="select-all" class="text-button small">すべて選択</button></div>
+          <div id="task-list" class="task-list"></div>
+          <div class="selection-note"><svg><use href="#icon-info"/></svg><span>「改」は反復課題なしの構成です．開始前・終了後の安静区間はありません．</span></div>
+        </section>
+
+        <aside class="summary-panel">
+          <div class="summary-title"><span class="eyebrow">SESSION OVERVIEW</span><span class="live-dot"></span></div>
+          <div class="duration-display"><span id="total-minutes">13</span><span class="duration-unit">分<span id="total-seconds"></span></span></div>
+          <p id="duration-description" class="muted">2 課題 ＋ 課題間の休憩 1 分</p>
+          <div id="timeline" class="timeline" aria-label="実行順序のプレビュー"></div>
+          <div id="timeline-legend" class="timeline-legend"></div>
+          <div class="summary-divider"></div>
+          <label class="field-label" for="participant-id">参加者 ID <span>任意</span></label>
+          <input id="participant-id" class="text-input" type="text" maxlength="80" autocomplete="off" placeholder="例：P001">
+          <label class="field-label gap-label" for="gap-seconds">課題間の休憩 <span>秒</span></label>
+          <div class="number-control"><input id="gap-seconds" type="number" min="0" max="600" step="1" value="60" aria-describedby="gap-help"><svg><use href="#icon-clock"/></svg></div>
+          <p id="gap-help" class="field-help">課題と課題の間に追加します．0 秒で省略．</p>
+          <details class="advanced"><summary>表示・セッション設定</summary><label class="check-setting"><input id="fullscreen" type="checkbox" checked>開始時に全画面で表示</label><label class="check-setting"><input id="show-timer" type="checkbox">実行中に残り時間を表示</label><label class="field-label" for="session-note">セッションメモ</label><input id="session-note" class="text-input" type="text" maxlength="160" placeholder="例：1 回目・午前"></details>
+          <p id="setup-error" class="error-message" role="alert" hidden></p>
+          <button id="prepare-start" class="primary-button start-button"><span>説明を確認して開始</span><svg><use href="#icon-arrow"/></svg></button>
+          <p class="start-note">発話・筆記・回答操作は不要です．</p>
+        </aside>
+      </div>
+
+      <section id="previous-record" class="previous-record" hidden><div><span class="record-icon"><svg><use href="#icon-download"/></svg></span><div><h3>前回の実施記録</h3><p id="previous-record-info"></p></div></div><button id="view-previous" class="secondary-button">記録を開く</button></section>
+      <footer class="page-footer"><span>言語課題ランナー <span id="app-version"></span></span><span>刺激と進行の履歴を記録します．想起した語の内容・個数は取得しません．</span></footer>
+    </main>
+  </div>
+
+  <main id="run-page" class="run-page" hidden>
+    <div class="run-header"><div><span id="run-status" class="run-status">実行中</span><span id="run-task-name"></span></div><div class="run-header-actions"><span id="run-position"></span><button id="pause-button" class="icon-button" aria-label="一時停止"><svg><use href="#icon-pause"/></svg></button><button id="run-fullscreen" class="icon-button" aria-label="全画面表示"><svg><use href="#icon-expand"/></svg></button></div></div>
+    <div id="stimulus-stage" class="stimulus-stage"><p id="phase-label" class="phase-label"></p><div id="stimulus" class="stimulus"></div><p id="phase-help" class="phase-help"></p></div>
+    <div class="run-footer"><span id="run-cycle"></span><span id="run-timer" hidden></span><button id="abort-button" class="text-button">実施を中止</button></div>
+    <div id="pause-overlay" class="pause-overlay" hidden><div class="pause-card"><div class="pause-symbol"><svg><use href="#icon-pause"/></svg></div><h1>一時停止中</h1><p id="pause-reason"></p><p class="muted">再開すると，残りの時間から続けます．</p><button id="resume-button" class="primary-button"><svg><use href="#icon-play"/></svg>再開する</button><button id="pause-abort" class="text-button">中止して記録を確認</button></div></div>
+  </main>
+
+  <main id="results-page" class="results-page workspace" hidden>
+    <div class="results-heading"><span id="result-icon" class="result-icon"><svg><use href="#icon-check"/></svg></span><div class="eyebrow">SESSION RECORD</div><h1 id="results-title">課題が終了しました</h1><p id="results-subtitle"></p></div>
+    <div class="results-stats"><div><span>実行した課題</span><strong id="result-task-count"></strong></div><div><span>実施時間（一時停止を除く）</span><strong id="result-duration"></strong></div><div><span>一時停止</span><strong id="result-pauses"></strong></div></div>
+    <section class="results-card"><div class="panel-heading"><div><h2>課題の開始時刻</h2><p>日本時間（JST）．イベント CSV では <code>task_start</code> の行に記録します．</p></div><span id="record-status" class="tag"></span></div><div class="table-scroll"><table><thead><tr><th>順番</th><th>課題名</th><th>開始時刻</th><th>状態</th></tr></thead><tbody id="task-start-table"></tbody></table></div></section>
+    <section class="download-panel"><div><h2>実施記録を保存</h2><p>イベント CSV：課題開始・刺激・休憩・一時停止の時刻<br>全記録 JSON：設定・刺激リスト・提示計画・イベント</p></div><div class="download-buttons"><button id="download-events" class="primary-button"><svg><use href="#icon-download"/></svg>イベント CSV</button><button id="download-json" class="secondary-button"><svg><use href="#icon-download"/></svg>全記録 JSON</button></div></section>
+    <p id="results-note" class="record-note"></p><button id="back-home" class="text-button back-button">← メイン画面に戻る</button>
+  </main>
+
+  <dialog id="instructions-dialog" class="instructions-dialog"><form method="dialog"><button class="dialog-close" aria-label="閉じる">×</button></form><div class="eyebrow">BEFORE YOU START</div><h2>開始前の説明</h2><p class="dialog-intro">計測中は声を出さず，文字を書かず，頭の中で取り組んでください．</p><div id="instruction-content"></div><div class="instruction-rest"><span>＋</span><p>注視点が表示されたら，生成や反復をやめて休んでください．<br>課題は設定した順番で自動的に切り替わります．</p></div><label class="check-setting instruction-check"><input id="instructions-understood" type="checkbox">参加者への説明と，記録の準備ができました</label><div class="dialog-actions"><button id="instructions-back" class="secondary-button">設定に戻る</button><button id="start-session" class="primary-button" disabled>本番を開始<svg><use href="#icon-arrow"/></svg></button></div></dialog>
+
+  <dialog id="stimuli-dialog" class="stimuli-dialog"><form method="dialog"><button class="dialog-close" aria-label="閉じる">×</button></form><div class="eyebrow">TASK DETAILS</div><h2 id="stimuli-title"></h2><p id="stimuli-flow" class="flow-description"></p><p class="stimuli-note">刺激は予備検証用の初期案です．必要に応じて編集できます．変更内容は全記録 JSON に保存します．</p><div id="stimuli-fields"></div><p id="stimuli-error" class="error-message" role="alert" hidden></p><div class="dialog-actions"><button id="stimuli-default" class="text-button">初期リストに戻す</button><button id="stimuli-save" class="primary-button">保存する</button></div></dialog>
+
+  <dialog id="abort-dialog" class="small-dialog"><h2>実施を中止しますか？</h2><p>ここまでのイベントを保存し，記録画面へ進みます．</p><div class="dialog-actions"><button id="abort-cancel" class="secondary-button">一時停止に戻る</button><button id="abort-confirm" class="danger-button">中止して記録へ</button></div></dialog>
+
+  <dialog id="protocol-dialog" class="protocol-dialog"><form method="dialog"><button class="dialog-close" aria-label="閉じる">×</button></form><div class="eyebrow">GUIDE & RECORDS</div><h2>使い方・記録仕様</h2><ol class="guide-list"><li>実行する課題にチェックを入れ，矢印で順番を設定します．</li><li>参加者 ID と課題間の休憩時間を設定します．「刺激・構成」から提示語も確認できます．</li><li>開始前の説明を参加者と確認し，本番を開始します．</li><li>終了後にイベント CSV と全記録 JSON を保存します．</li></ol><h3>課題時間</h3><p>言語流暢性課題：6 分 ／ 動詞生成課題：12 分<br>言語流暢性課題（改）：6 分 ／ 動詞生成課題（改）：6 分</p><p>各課題の最後の休憩も課題時間に含みます．課題間の休憩は別途追加します．開始前・終了後の安静や，計測中の追加説明はありません．</p><h3>時刻と CSV</h3><p><code>event = task_start</code> が各課題の開始です．<code>task_name</code> に画面と同じ課題名，<code>task_order</code> に実行順を記録します．<code>phase_start</code> は各文字・名詞・休憩の開始です．</p><p><code>timestamp</code> は UTC，<code>timestamp_jst</code> は日本時間，<code>timestamp_unix_ms</code> は UNIX 時刻のミリ秒です．<code>elapsed_ms</code> は停止時間を含む経過時間，<code>active_elapsed_ms</code> は停止時間を除く経過時間です．CSV は Excel 向けの UTF-8 BOM 付きです．</p><h3>一時停止と記録の保管</h3><p>タブの切り替え，ウィンドウからのフォーカス移動，全画面解除，描画の大幅な遅れで自動停止します．Space キーでも一時停止・再開できます．停止した刺激は途中から再開し，該当区間を <code>interrupted = true</code> と記録します．</p><p>設定と直近 1 回の記録は，この端末・ブラウザに保存します．サーバーへ実験記録を送信しません．ブラウザのデータ削除や端末故障に備え，実施ごとにダウンロードしてください．再読み込み後は未完了の計測を再開せず，残っている記録の出力に対応します．</p><h3>計測上の位置付け</h3><p>頭の中で生成した語の数や内容，課題の正誤は取得しません．時刻はブラウザで表示を更新した時点の記録であり，ディスプレイの物理的な発光時刻を保証するものではありません．長い描画遅延が発生しても，刺激を飛ばして時間を合わせる処理はしません．実際の提示時間と予定からの遅れを記録します．</p><p>本アプリは会話で設定した予備検証用プロトコルです．「旧版」も原著の完全な再現ではありません．</p><div class="dialog-actions"><button id="protocol-close" class="primary-button">閉じる</button></div></dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
